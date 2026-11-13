@@ -1,0 +1,9 @@
+[Unit]
+Description=Download and set a Wallhaven wallpaper
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/wallhaven-wallpaper
+
+[Install]
+WantedBy=default.target
