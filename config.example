@@ -1,0 +1,33 @@
+# Optional config for wallhaven-wallpaper.
+# Copy to ~/.config/wallhaven/config and uncomment what you want to change.
+# This file is plain Bash; anything not set here uses the script's default.
+
+# --- Limit wallpapers to specific tags --------------------------------------
+# By default the script picks from all of Wallhaven. To pick only from certain
+# tags (games, anime, artists, themes, ...), list them as "Name|tag_id".
+# Each run tries the tags in a random order until it finds a new wallpaper.
+#
+# To find a tag id, open the tag on wallhaven.cc; the number at the end of
+# the URL is the id, e.g. https://wallhaven.cc/tag/1777 -> 1777.
+# The name is only used in the script's log output.
+#
+# TAGS=(
+#     "The Legend of Zelda|1777"
+#     "Final Fantasy|997"
+#     "Landscapes|711"
+# )
+
+# --- Search filters ---------------------------------------------------------
+# PURITY=100            # 100 = SFW only, 110 = SFW + sketchy
+# CATEGORIES=111        # flags general/anime/people, e.g. 110 = no people
+# RATIOS="landscape"    # "landscape", "portrait", or e.g. "16x9,16x10"; "" = any
+# MIN_WIDTH=1920
+# MIN_HEIGHT=1080
+
+# --- Behaviour --------------------------------------------------------------
+# DIR="$HOME/Pictures/wallhaven"  # where wallpapers are downloaded
+# BLOCK_DAYS=365        # days before a wallpaper may be shown again
+# FALLBACK_RECENT=40    # if all exhausted, only avoid the last N used
+# KEEP_FILES=30         # downloaded wallpapers to keep
+# PAGE_SAMPLES=5        # random result pages sampled per search
+# QUALITY_PERCENT=50    # keep the top N% of samples by favorites

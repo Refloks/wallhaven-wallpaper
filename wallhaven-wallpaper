@@ -13,8 +13,8 @@ USED_IDS="$HISTORY_DIR/used-ids"
 
 PAGE_SAMPLES=5
 QUALITY_PERCENT=50
-MIN_WIDTH=2560
-MIN_HEIGHT=1440
+MIN_WIDTH=1920
+MIN_HEIGHT=1080
 
 # 100 = SFW only, 110 = SFW + sketchy.
 PURITY=100
@@ -22,7 +22,7 @@ PURITY=100
 # A used wallpaper is not shown again for this many days.
 BLOCK_DAYS=365
 
-# If every franchise is exhausted, fall back to only avoiding this many
+# If every search is exhausted, fall back to only avoiding this many
 # of the most recently used wallpapers.
 FALLBACK_RECENT=40
 
@@ -31,6 +31,30 @@ KEEP_FILES=30
 
 # How long to wait for the network at login before giving up.
 NETWORK_WAIT_SECONDS=60
+
+# Wallhaven categories as three 0/1 flags: general, anime, people.
+CATEGORIES=111
+
+# Accepted aspect ratios, comma-separated: "landscape", "portrait", or exact
+# ratios like "16x9,16x10". Empty = any.
+RATIOS="landscape"
+
+# Optional tags to pick from, as "Name|tag_id". Each run tries them in a
+# random order. Empty = search all of Wallhaven. Set this in the config file
+# rather than here; see config.example.
+TAGS=()
+
+# Any setting above can be overridden in this file (plain Bash).
+CONFIG_FILE="$HOME/.config/wallhaven/config"
+
+if [[ -f "$CONFIG_FILE" ]]; then
+    if ! bash -n "$CONFIG_FILE"; then
+        echo "Syntax error in $CONFIG_FILE, not running."
+        exit 1
+    fi
+    # shellcheck source=/dev/null
+    source "$CONFIG_FILE"
+fi
 
 # Delete all but the newest $KEEP_FILES wallpapers, never the current one.
 cleanup_old() {
@@ -113,30 +137,24 @@ until curl -fsS --max-time 10 --proto '=https' --tlsv1.2 \
     waited=$(( waited + 3 ))
 done
 
-FRANCHISES=(
-    "Persona series|4060"
-    "Tekken|2870"
-    "JoJo|22159"
-    "Chainsaw Man|98223"
-    "Devil May Cry|4671"
-    "Final Fantasy|997"
-    "Street Fighter|1276"
-    "The Legend of Zelda|1777"
-    "Video games (any)|55"
-    "Anime (any)|1"
-)
+# Without configured tags, search all of Wallhaven (empty tag id).
+if (( ${#TAGS[@]} > 0 )); then
+    SOURCES=("${TAGS[@]}")
+else
+    SOURCES=("All of Wallhaven|")
+fi
 
 search() {
     local tag_id="$1" page="$2" seed="${3:-}"
     local args=(
-        --data-urlencode "q=id:$tag_id"
-        --data "categories=110"
+        --data "categories=$CATEGORIES"
         --data "purity=$PURITY"
         --data "sorting=random"
         --data "atleast=${MIN_WIDTH}x${MIN_HEIGHT}"
-        --data "ratios=16x9"
         --data "page=$page"
     )
+    [[ -n "$tag_id" ]] && args+=(--data-urlencode "q=id:$tag_id")
+    [[ -n "$RATIOS" ]] && args+=(--data "ratios=$RATIOS")
     [[ -n "$seed" ]] && args+=(--data "seed=$seed")
 
     curl -fsSL \
@@ -150,7 +168,7 @@ search() {
         "${args[@]}"
 }
 
-# Try every franchise once. $1 = "year" or "recent": which blocklist to use.
+# Try every source once. $1 = "year" or "recent": which blocklist to use.
 # Returns 0 after setting a wallpaper, 1 if nothing usable was found.
 pick_wallpaper() {
     local mode="$1"
@@ -159,15 +177,21 @@ pick_wallpaper() {
     local -n blocked="$list"
 
     mapfile -t SHUFFLED < <(
-        printf '%s\n' "${FRANCHISES[@]}" | shuf
+        printf '%s\n' "${SOURCES[@]}" | shuf
     )
 
     for SELECTED in "${SHUFFLED[@]}"; do
         NAME="${SELECTED%%|*}"
         TAG_ID="${SELECTED##*|}"
 
+        if [[ -n "$TAG_ID" && ! "$TAG_ID" =~ ^[0-9]+$ ]]; then
+            echo
+            echo "Skipping \"$SELECTED\": tag id must be a number (Name|1234)."
+            continue
+        fi
+
         echo
-        echo "Trying franchise: $NAME"
+        echo "Searching: $NAME"
 
         if ! meta_json=$(search "$TAG_ID" 1); then
             echo "Search request failed for $NAME, skipping."
@@ -305,7 +329,7 @@ pick_wallpaper() {
 
             echo
             echo "Selected wallpaper:"
-            echo "  Franchise: $NAME"
+            echo "  Source: $NAME"
             echo "  ID: $id"
             echo "  Resolution: $resolution"
             echo "  Favorites: $favorites"
@@ -351,7 +375,7 @@ if pick_wallpaper year; then
 fi
 
 echo
-echo "Every franchise is exhausted for the last ${BLOCK_DAYS} days;"
+echo "Every search is exhausted for the last ${BLOCK_DAYS} days;"
 echo "falling back to avoiding only the last ${FALLBACK_RECENT} wallpapers."
 
 if pick_wallpaper recent; then
